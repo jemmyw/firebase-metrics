@@ -1,6 +1,6 @@
 {
   "name": "firebase-metrics",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Use firebase a as place to store metric data",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
