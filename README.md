@@ -4,6 +4,13 @@ Sometimes you just want to get some metrics data before you're big enough to hav
 
 It also works nicely with frontend graphing libraries due to Firebase realtime nature.
 
+## Install
+
+```
+npm install firebase
+npm install firebase-metrics
+```
+
 ## Collecting metrics
 
 *Note that in these examples I've not verified the dates in the data below so it probably does not add up*
