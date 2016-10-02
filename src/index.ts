@@ -38,7 +38,7 @@ const DAY = 86400000;
 const HOUR = 3600000;
 
 function sanitizeTag(tag: string): string {
-  return 'tag:' + tag.trim().replace(/[^A-Za-z-_]/, '-');
+  return 'tag:' + tag.trim().replace(/[^A-Za-z-_0-9]/, '-');
 }
 
 function getVal(s: DataSnapshot) {
@@ -241,6 +241,7 @@ function pushMetric(inRef: firebase.database.Reference, tag: string) {
  * @param inRef The place in firebase where you've pushed metric data (using pushMetric)
  * @param outRef The place in firebase to store the metric data
  * @param resolutions Array of resolutions to store
+ * @return function that when called stops the metric collection process
  */
 function startMetrics(inRef: firebase.database.Reference, outRef: firebase.database.Reference, resolutions: Resolution[] = defaultResolutions) {
   const context: MetricContext = {inRef, outRef, resolutions};
@@ -259,6 +260,12 @@ function startMetrics(inRef: firebase.database.Reference, outRef: firebase.datab
     clearInterval(updateTimer);
     clearInterval(removeTimer);
   });
+
+  return function() {
+    inRef.off('child_added', boundProcessMetric);
+    clearInterval(updateTimer);
+    clearInterval(removeTimer);
+  }
 }
 
 export {startMetrics, pushMetric}

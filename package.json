@@ -11,6 +11,8 @@
   "author": "Jeremy Wells <jemmyw@gmail.com>",
   "license": "ISC",
   "devDependencies": {
+    "assert": "^1.4.1",
+    "tape-async": "^2.1.1",
     "typescript": "^2.0.3",
     "typings": "^1.4.0"
   },

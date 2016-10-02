@@ -122,3 +122,7 @@ There is a non-working but viable example in the `examples` directory. I pulled 
 Obviously both the `startMetrics` and `pushMetric` processes require read/write access to the inRef and outRef (pushMetric doesn't need any access to outRef).
 
 If you see data building up in the inRef then the `startMetrics` program isn't running.
+
+## Testing
+
+The tests rely on a real Firebase database, which can be provisioned for free at firebase.google.com.
