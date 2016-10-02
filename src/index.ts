@@ -7,6 +7,8 @@ type Reference = firebase.database.Reference;
 export interface MetricData {
   timestamp: number
   tag: string
+  count?: number
+  value?: number
 }
 
 export interface Resolution {
@@ -100,12 +102,49 @@ function transactAggregate(currentData) {
 }
 
 /**
- * Increment the value by 1
- * @param {number} value
- * @returns {number}
+ * Return an incrementer than increments by count
+ * @param count
+ * @returns {(value:number)=>number}
  */
-function transactIncrement(value: number): number {
-  return (value || 0) + 1
+function transactIncrement(count:number = 1) {
+  return function(value: number): number {
+    return (value || 0) + count;
+  }
+}
+
+function storeCountMetric(resolutions, dayRef, ms, metric) {
+  const count = metric.count || 1;
+  const incrementer = transactIncrement(count);
+
+  for (let resolution of resolutions) {
+    const resRef = dayRef.child(resolution.name);
+    const buckets = numBuckets(resolution.t);
+    const bucket = (ms / DAY * buckets) >> 0;
+
+    resRef.child(String(bucket)).transaction(incrementer);
+  }
+}
+
+function storeMeanMetric(resolutions, dayRef, ms, metric) {
+  const value = metric.value;
+
+  for (let resolution of resolutions) {
+    const resRef = dayRef.child(resolution.name);
+    const buckets = numBuckets(resolution.t);
+    const bucket = (ms / DAY * buckets) >> 0;
+
+    resRef.child(String(bucket)).transaction(data => {
+      if (data) {
+        const nc = data.count + 1;
+        return {
+          count: nc,
+          value: data.value + (value - data.value) / nc
+        }
+      } else {
+        return {count:1, value};
+      }
+    });
+  }
 }
 
 /**
@@ -128,16 +167,13 @@ function storeMetric(this: PushContext, error, committed) {
   const timestamp = metric.timestamp;
   const day = getDay(timestamp);
   const ms = timestamp % DAY;
-
   const tagRef = this.outRef.child(tag);
   const dayRef = tagRef.child(String(day));
 
-  for (let resolution of this.resolutions) {
-    const resRef = dayRef.child(resolution.name);
-    const buckets = numBuckets(resolution.t);
-    const bucket = (ms / DAY * buckets) >> 0;
-
-    resRef.child(String(bucket)).transaction(transactIncrement);
+  if (metric.value) {
+    storeMeanMetric(this.resolutions, dayRef, ms, metric);
+  } else {
+    storeCountMetric(this.resolutions, dayRef, ms, metric);
   }
 
   this.outRef.child('tags').child(tag).set(day);
@@ -221,17 +257,27 @@ async function removeAggregations(this: MetricContext) {
 }
 
 /**
- * Push a metric to an inbox location
+ * Push a count metric to an inbox location
  *
- * @param inRef A location in firebase
- * @param tag A tag for the data
+ * @param inRef a location in firebase
+ * @param tag a tag for the data
+ * @param count a count, defaults to 1
  * @returns {Promise}
  */
-function pushMetric(inRef: firebase.database.Reference, tag: string) {
+function pushCount(inRef: firebase.database.Reference, tag: string, count:number = 1) {
   const timestamp = Date.now();
-  const values = {timestamp, tag};
+  const values = {timestamp, tag, count};
   return inRef.push(values);
 }
+
+function pushMetric(inRef: firebase.database.Reference, tag: string, value?: number) {
+  if (!value) { return pushCount(inRef, tag, 1); }
+
+  const timestamp = Date.now();
+  const values = {timestamp, tag, value};
+  return inRef.push(values);
+}
+
 
 /**
  * Start a process that looks at a metric inbox location in firebase and
@@ -268,4 +314,4 @@ function startMetrics(inRef: firebase.database.Reference, outRef: firebase.datab
   }
 }
 
-export {startMetrics, pushMetric}
+export {startMetrics, pushMetric, pushCount}

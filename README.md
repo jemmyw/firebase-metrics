@@ -52,12 +52,12 @@ startMetrics(inRef, outRef, resolutions);
 
 This process will now wait for data to appear in `metrics-in` and then record that as counts in metrics.
 
-We can use the `pushMetric` helper to push a metric in:
+We can use the `pushCount` helper to push a metric in:
 
 ```js
-const {pushMetric} = require('firebase-metrics');
+const {pushCount} = require('firebase-metrics');
 
-pushMetric(inRef, 'my-tag');
+pushCount(inRef, 'my-tag', 2);
 ```
 
 Now very soon you'll see the following structure in metrics:
@@ -67,13 +67,13 @@ Now very soon you'll see the following structure in metrics:
   "tag:my-tag": {
     "1474243200000": {
       "1min": {
-        599: 1
+        599: 2
       },
       "1hour": {
-        8: 1
+        8: 2
       },
       "1day": {
-        0: 1
+        0: 2
       }
     }
   },
@@ -97,14 +97,14 @@ OK, not that interesting, run it again and:
   "tag:my-tag": {
     "1474243200000": {
       "1min": {
-        599: 1,
-        600: 1
+        599: 2,
+        600: 2
       },
       "1hour": {
-        8: 2
+        8: 4
       },
       "1day": {
-        0: 2
+        0: 4
       }
     }
   }
@@ -113,13 +113,45 @@ OK, not that interesting, run it again and:
 
 So we can see what is happening. It puts the data into buckets in each resolution. It tracks the days that each resolution has data for, and the expiry for the day. When the day ticks over the server component will remove the expired buckets.
 
+## Value metrics
+
+You can also pass in values that will be averaged in each time bucket using the helper `pushMetric`. For example:
+
+```js
+pushMetric(inRef, 'tag1', 23.33);
+pushMetric(inRef, 'tag1', 10.78);
+```
+
+This produces the following:
+
+```json
+"metrics": {
+  "tag:tag1": {
+    "1474243200000": {
+      "1min": {
+        599: {count:1, value: 23.33},
+        600: {count:1, value: 10.78}
+      },
+      "1hour": {
+        8: {count: 2, value: 17.055}
+      },
+      "1day": {
+        0: {count: 2, value: 17.055}
+      }
+    }
+  }
+}
+```
+
+*Note that you must be careful not to mix calls to `pushCount` and `pushMetric` as the data formats don't mix.*
+
 ## Graphing the data
 
 There is a non-working but viable example in the `examples` directory. I pulled it straight out of a working dashboard, so it just requires some build (typescript and webpack).
 
 ## Troubleshooting
 
-Obviously both the `startMetrics` and `pushMetric` processes require read/write access to the inRef and outRef (pushMetric doesn't need any access to outRef).
+Obviously both the `startMetrics` and `pushCount` processes require read/write access to the inRef and outRef (pushCount doesn't need any access to outRef).
 
 If you see data building up in the inRef then the `startMetrics` program isn't running.
 

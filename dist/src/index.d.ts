@@ -2,6 +2,8 @@ import * as firebase from 'firebase';
 export interface MetricData {
     timestamp: number;
     tag: string;
+    count?: number;
+    value?: number;
 }
 export interface Resolution {
     name: string;
@@ -9,13 +11,15 @@ export interface Resolution {
     keep?: number;
 }
 /**
- * Push a metric to an inbox location
+ * Push a count metric to an inbox location
  *
- * @param inRef A location in firebase
- * @param tag A tag for the data
+ * @param inRef a location in firebase
+ * @param tag a tag for the data
+ * @param count a count, defaults to 1
  * @returns {Promise}
  */
-declare function pushMetric(inRef: firebase.database.Reference, tag: string): firebase.database.ThenableReference;
+declare function pushCount(inRef: firebase.database.Reference, tag: string, count?: number): firebase.database.ThenableReference;
+declare function pushMetric(inRef: firebase.database.Reference, tag: string, value?: number): firebase.database.ThenableReference;
 /**
  * Start a process that looks at a metric inbox location in firebase and
  * aggregates the values there into the out location according to the given
@@ -27,4 +31,4 @@ declare function pushMetric(inRef: firebase.database.Reference, tag: string): fi
  * @return function that when called stops the metric collection process
  */
 declare function startMetrics(inRef: firebase.database.Reference, outRef: firebase.database.Reference, resolutions?: Resolution[]): () => void;
-export { startMetrics, pushMetric };
+export { startMetrics, pushMetric, pushCount };

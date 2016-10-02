@@ -7,7 +7,8 @@
 import tape = require('tape-async');
 import {Test} from "tape-async";
 import firebase = require('firebase');
-import {startMetrics, pushMetric} from "../src";
+import {startMetrics, pushCount, pushMetric} from "../src";
+pushCount;
 
 const HOUR = 3600000;
 const DAY = 86400000;
@@ -107,15 +108,19 @@ function objToArray(obj) {
   return ary;
 }
 
+function between(from:number, to:number, value:number) {
+  return value > from && to > value;
+}
+
 test('countTest', async function(t:Test, {inRef, outRef}) {
   const stop = startMetrics(inRef,  outRef, resolutions);
 
   try {
-    await pushMetric(inRef, 'tag1');
-    await pushMetric(inRef, 'tag1');
-    await pushMetric(inRef, 'tag2');
+    await pushCount(inRef, 'tag1');
+    await pushCount(inRef, 'tag1', 2);
+    await pushCount(inRef, 'tag2');
     await sleep(1000);
-    await pushMetric(inRef, 'tag2');
+    await pushCount(inRef, 'tag2');
     await waitRefZero(inRef);
 
     const outData = await outRef.once('value')
@@ -140,19 +145,58 @@ test('countTest', async function(t:Test, {inRef, outRef}) {
     t.deepEqual(Object.keys(tag1[TODAY]), ['1day', '1hour', '1sec'], 'tag1 has all resolutions');
     t.deepEqual(Object.keys(tag2[TODAY]), ['1day', '1hour', '1sec'], 'tag2 has all resolutions');
 
-    t.equal(tag1[TODAY]['1day'][0], 2, 'tag1 count of 2 in 1day');
+    t.equal(tag1[TODAY]['1day'][0], 3, 'tag1 count of 3 in 1day');
     t.equal(tag2[TODAY]['1day'][0], 2, 'tag2 count of 2 in 1day');
 
     const tag1hours = objToArray(tag1[TODAY]['1hour']);
     const tag2hours = objToArray(tag2[TODAY]['1hour']);
-    t.equal(tag1hours.reduce((acc, n) => acc + n, 0), 2, 'tag1 count of 2 in 1hour');
+    t.equal(tag1hours.reduce((acc, n) => acc + n, 0), 3, 'tag1 count of 3 in 1hour');
     t.equal(tag2hours.reduce((acc, n) => acc + n, 0), 2, 'tag2 count of 2 in 1hour');
 
     const tag1secs = objToArray(tag1[TODAY]['1sec']);
     const tag2secs = objToArray(tag2[TODAY]['1sec']);
-    t.equal(tag1secs.reduce((acc, n) => acc + n, 0), 2, 'tag1 count of 2 in 1sec');
+    t.equal(tag1secs.reduce((acc, n) => acc + n, 0), 3, 'tag1 count of 3 in 1sec');
     t.equal(tag2secs.reduce((acc, n) => acc + n, 0), 2, 'tag2 count of 2 in 1sec');
     t.equal(tag2secs.filter(v => v > 0).length, 2, 'tag2 1sec should have 2 filled in buckets');
+  }
+  finally {
+    stop();
+  }
+});
+
+test('meanTest', async function(t:Test, {inRef, outRef}) {
+  const stop = startMetrics(inRef,  outRef, resolutions);
+
+  try {
+    await pushMetric(inRef, 'tag1', 2.33);
+    await pushMetric(inRef, 'tag1', 1.22);
+    await pushMetric(inRef, 'tag1', 0.15);
+    await pushMetric(inRef, 'tag2', 9.33);
+    await sleep(1000);
+    await pushMetric(inRef, 'tag2', 7.2);
+    await waitRefZero(inRef);
+
+    const outData = await outRef.once('value')
+      .then(s => s.val());
+
+    const tag1 = outData['tag:tag1'];
+    const tag2 = outData['tag:tag2'];
+
+    const tag1day = objToArray(tag1[TODAY]['1day']);
+    const tag2day = objToArray(tag2[TODAY]['1day']);
+    const tag1hour = objToArray(tag1[TODAY]['1hour']);
+    const tag1sec = objToArray(tag1[TODAY]['1sec']);
+    const tag2sec = objToArray(tag2[TODAY]['1sec']);
+
+    t.ok(between(1.22, 1.24, tag1day.reduce((acc, n) => acc + n.value, 0)), 'tag1 mean today is 1.23');
+    t.ok(between(8.264, 8.266, tag2day.reduce((acc, n) => acc + n.value, 0)), 'tag2 mean today is 8.265');
+
+    t.equal(tag2sec.filter(n => n.value).length, 2, 'tag2 has 2 1sec values');
+    t.equal(tag2sec.reduce((acc, n) => acc + n.value, 0), 16.53, 'tag2 values add up to 16.53');
+
+    t.ok(tag1hour.every(v => between(0.15, 2.33, v.value)), 'tag1 hourly values between 0.15 and 2.33');
+    t.equal(tag1hour.reduce((acc, n) => acc + n.count, 0), 3, 'tag1 counts 3');
+    t.equal(tag1sec.reduce((acc, n) => acc + n.count, 0), 3, 'tag1 counts 3');
   }
   finally {
     stop();

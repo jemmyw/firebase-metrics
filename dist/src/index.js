@@ -67,12 +67,44 @@ function transactAggregate(currentData) {
     }
 }
 /**
- * Increment the value by 1
- * @param {number} value
- * @returns {number}
+ * Return an incrementer than increments by count
+ * @param count
+ * @returns {(value:number)=>number}
  */
-function transactIncrement(value) {
-    return (value || 0) + 1;
+function transactIncrement(count = 1) {
+    return function (value) {
+        return (value || 0) + count;
+    };
+}
+function storeCountMetric(resolutions, dayRef, ms, metric) {
+    const count = metric.count || 1;
+    const incrementer = transactIncrement(count);
+    for (let resolution of resolutions) {
+        const resRef = dayRef.child(resolution.name);
+        const buckets = numBuckets(resolution.t);
+        const bucket = (ms / DAY * buckets) >> 0;
+        resRef.child(String(bucket)).transaction(incrementer);
+    }
+}
+function storeMeanMetric(resolutions, dayRef, ms, metric) {
+    const value = metric.value;
+    for (let resolution of resolutions) {
+        const resRef = dayRef.child(resolution.name);
+        const buckets = numBuckets(resolution.t);
+        const bucket = (ms / DAY * buckets) >> 0;
+        resRef.child(String(bucket)).transaction(data => {
+            if (data) {
+                const nc = data.count + 1;
+                return {
+                    count: nc,
+                    value: data.value + (value - data.value) / nc
+                };
+            }
+            else {
+                return { count: 1, value };
+            }
+        });
+    }
 }
 /**
  * @note Must be bound to an object with the keys {ref, dataSnapshot,
@@ -95,11 +127,11 @@ function storeMetric(error, committed) {
     const ms = timestamp % DAY;
     const tagRef = this.outRef.child(tag);
     const dayRef = tagRef.child(String(day));
-    for (let resolution of this.resolutions) {
-        const resRef = dayRef.child(resolution.name);
-        const buckets = numBuckets(resolution.t);
-        const bucket = (ms / DAY * buckets) >> 0;
-        resRef.child(String(bucket)).transaction(transactIncrement);
+    if (metric.value) {
+        storeMeanMetric(this.resolutions, dayRef, ms, metric);
+    }
+    else {
+        storeCountMetric(this.resolutions, dayRef, ms, metric);
     }
     this.outRef.child('tags').child(tag).set(day);
     this.ref.remove();
@@ -165,15 +197,25 @@ function removeAggregations() {
     });
 }
 /**
- * Push a metric to an inbox location
+ * Push a count metric to an inbox location
  *
- * @param inRef A location in firebase
- * @param tag A tag for the data
+ * @param inRef a location in firebase
+ * @param tag a tag for the data
+ * @param count a count, defaults to 1
  * @returns {Promise}
  */
-function pushMetric(inRef, tag) {
+function pushCount(inRef, tag, count = 1) {
     const timestamp = Date.now();
-    const values = { timestamp, tag };
+    const values = { timestamp, tag, count };
+    return inRef.push(values);
+}
+exports.pushCount = pushCount;
+function pushMetric(inRef, tag, value) {
+    if (!value) {
+        return pushCount(inRef, tag, 1);
+    }
+    const timestamp = Date.now();
+    const values = { timestamp, tag, value };
     return inRef.push(values);
 }
 exports.pushMetric = pushMetric;
