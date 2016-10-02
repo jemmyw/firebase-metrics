@@ -160,3 +160,5 @@ If you see data building up in the inRef then the `startMetrics` program isn't r
 ## Testing
 
 The tests rely on a real Firebase database, which can be provisioned for free at firebase.google.com.
+
+Read the instructions in src/test.ts, and then run the resulting file in dist/test/test.js.
