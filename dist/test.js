@@ -15,8 +15,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
  */
 const tape = require('tape-async');
 const firebase = require('firebase');
-const src_1 = require("../src");
-src_1.pushCount;
+const _1 = require("./");
 const HOUR = 3600000;
 const DAY = 86400000;
 const TODAY = ((Date.now() / DAY) >> 0) * DAY;
@@ -114,13 +113,13 @@ function between(from, to, value) {
 }
 test('countTest', function (t, { inRef, outRef }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const stop = src_1.startMetrics(inRef, outRef, resolutions);
+        const stop = _1.startMetrics(inRef, outRef, resolutions);
         try {
-            yield src_1.pushCount(inRef, 'tag1');
-            yield src_1.pushCount(inRef, 'tag1', 2);
-            yield src_1.pushCount(inRef, 'tag2');
+            yield _1.pushCount(inRef, 'tag1');
+            yield _1.pushCount(inRef, 'tag1', 2);
+            yield _1.pushCount(inRef, 'tag2');
             yield sleep(1000);
-            yield src_1.pushCount(inRef, 'tag2');
+            yield _1.pushCount(inRef, 'tag2');
             yield waitRefZero(inRef);
             const outData = yield outRef.once('value')
                 .then(s => s.val());
@@ -157,14 +156,14 @@ test('countTest', function (t, { inRef, outRef }) {
 });
 test('meanTest', function (t, { inRef, outRef }) {
     return __awaiter(this, void 0, void 0, function* () {
-        const stop = src_1.startMetrics(inRef, outRef, resolutions);
+        const stop = _1.startMetrics(inRef, outRef, resolutions);
         try {
-            yield src_1.pushMetric(inRef, 'tag1', 2.33);
-            yield src_1.pushMetric(inRef, 'tag1', 1.22);
-            yield src_1.pushMetric(inRef, 'tag1', 0.15);
-            yield src_1.pushMetric(inRef, 'tag2', 9.33);
+            yield _1.pushMetric(inRef, 'tag1', 2.33);
+            yield _1.pushMetric(inRef, 'tag1', 1.22);
+            yield _1.pushMetric(inRef, 'tag1', 0.15);
+            yield _1.pushMetric(inRef, 'tag2', 9.33);
             yield sleep(1000);
-            yield src_1.pushMetric(inRef, 'tag2', 7.2);
+            yield _1.pushMetric(inRef, 'tag2', 7.2);
             yield waitRefZero(inRef);
             const outData = yield outRef.once('value')
                 .then(s => s.val());

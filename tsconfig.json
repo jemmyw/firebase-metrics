@@ -26,5 +26,10 @@
     "indentSize": 2,
     "tabSize": 2
   },
-  "exclude": ["examples", "node_modules"]
+  "files": [
+    "typings/index.d.ts",
+    "typings/tape-async.d.ts",
+    "src/index.ts",
+    "src/test.ts"
+  ]
 }

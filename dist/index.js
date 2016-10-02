@@ -11,7 +11,7 @@ const ramda_1 = require('ramda');
 const DAY = 86400000;
 const HOUR = 3600000;
 function sanitizeTag(tag) {
-    return 'tag:' + tag.trim().replace(/[^A-Za-z-_]/, '-');
+    return 'tag:' + tag.trim().replace(/[^A-Za-z-_0-9]/, '-');
 }
 function getVal(s) {
     return s.val();
@@ -67,12 +67,34 @@ function transactAggregate(currentData) {
     }
 }
 /**
- * Increment the value by 1
- * @param {number} value
- * @returns {number}
+ * Return an incrementer than increments by count
+ * @param count
+ * @returns {(value:number)=>number}
  */
-function transactIncrement(value) {
-    return (value || 0) + 1;
+function transactIncrement(count = 1) {
+    return function (value) {
+        return (value || 0) + count;
+    };
+}
+/**
+ * Return a function that updates the mean of a piece of data using the new
+ * value and the count in the data.
+ * @param value
+ * @returns {(data:(undefined|MeanData))=>MeanData
+ */
+function transactMean(value) {
+    return function (data) {
+        if (data) {
+            const nc = data.count + 1;
+            return {
+                count: nc,
+                value: data.value + (value - data.value) / nc
+            };
+        }
+        else {
+            return { count: 1, value };
+        }
+    };
 }
 /**
  * @note Must be bound to an object with the keys {ref, dataSnapshot,
@@ -95,11 +117,14 @@ function storeMetric(error, committed) {
     const ms = timestamp % DAY;
     const tagRef = this.outRef.child(tag);
     const dayRef = tagRef.child(String(day));
+    const transactionFn = metric.value ?
+        transactMean(metric.value) :
+        transactIncrement(metric.count);
     for (let resolution of this.resolutions) {
         const resRef = dayRef.child(resolution.name);
         const buckets = numBuckets(resolution.t);
         const bucket = (ms / DAY * buckets) >> 0;
-        resRef.child(String(bucket)).transaction(transactIncrement);
+        resRef.child(String(bucket)).transaction(transactionFn);
     }
     this.outRef.child('tags').child(tag).set(day);
     this.ref.remove();
@@ -165,15 +190,37 @@ function removeAggregations() {
     });
 }
 /**
- * Push a metric to an inbox location
+ * Push a count metric to an inbox location
  *
- * @param inRef A location in firebase
- * @param tag A tag for the data
+ * @param inRef a location in firebase
+ * @param tag a tag for the data
+ * @param count a count, defaults to 1
  * @returns {Promise}
  */
-function pushMetric(inRef, tag) {
+function pushCount(inRef, tag, count = 1) {
     const timestamp = Date.now();
-    const values = { timestamp, tag };
+    const values = { timestamp, tag, count };
+    return inRef.push(values);
+}
+exports.pushCount = pushCount;
+/**
+ * Push a value metric an an inbox location
+ *
+ * @example
+ *
+ *   pushMetric(inRef, 'processing-time', 23.44)
+ *
+ * @param inRef a location in firebase
+ * @param {string} tag a tag for the data
+ * @param {number} value the data value
+ * @returns {Promise}
+ */
+function pushMetric(inRef, tag, value) {
+    if (!value) {
+        return pushCount(inRef, tag, 1);
+    }
+    const timestamp = Date.now();
+    const values = { timestamp, tag, value };
     return inRef.push(values);
 }
 exports.pushMetric = pushMetric;
@@ -185,6 +232,7 @@ exports.pushMetric = pushMetric;
  * @param inRef The place in firebase where you've pushed metric data (using pushMetric)
  * @param outRef The place in firebase to store the metric data
  * @param resolutions Array of resolutions to store
+ * @return function that when called stops the metric collection process
  */
 function startMetrics(inRef, outRef, resolutions = defaultResolutions) {
     const context = { inRef, outRef, resolutions };
@@ -200,6 +248,11 @@ function startMetrics(inRef, outRef, resolutions = defaultResolutions) {
         clearInterval(updateTimer);
         clearInterval(removeTimer);
     });
+    return function () {
+        inRef.off('child_added', boundProcessMetric);
+        clearInterval(updateTimer);
+        clearInterval(removeTimer);
+    };
 }
 exports.startMetrics = startMetrics;
 //# sourceMappingURL=index.js.map

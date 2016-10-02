@@ -7,8 +7,7 @@
 import tape = require('tape-async');
 import {Test} from "tape-async";
 import firebase = require('firebase');
-import {startMetrics, pushCount, pushMetric} from "../src";
-pushCount;
+import {startMetrics, pushCount, pushMetric} from "./";
 
 const HOUR = 3600000;
 const DAY = 86400000;
