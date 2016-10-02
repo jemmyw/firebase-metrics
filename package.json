@@ -10,6 +10,9 @@
   },
   "author": "Jeremy Wells <jemmyw@gmail.com>",
   "license": "ISC",
+  "homepage": "https://github.com/jemmyw/firebase-metrics",
+  "repository": "https://github.com/jemmyw/firebase-metrics.git",
+  "bugs": "https://github.com/jemmyw/firebase-metrics/issues",
   "devDependencies": {
     "assert": "^1.4.1",
     "tape-async": "^2.1.1",

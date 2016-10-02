@@ -1,5 +1,7 @@
 # Firebase Metrics
 
+https://github.com/jemmyw/firebase-metrics
+
 Sometimes you just want to get some metrics data before you're big enough to have a proper place for storing them. This library helps if your datastore is Firebase.
 
 It also works nicely with frontend graphing libraries due to Firebase realtime nature.
