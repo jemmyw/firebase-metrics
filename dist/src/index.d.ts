@@ -19,6 +19,18 @@ export interface Resolution {
  * @returns {Promise}
  */
 declare function pushCount(inRef: firebase.database.Reference, tag: string, count?: number): firebase.database.ThenableReference;
+/**
+ * Push a value metric an an inbox location
+ *
+ * @example
+ *
+ *   pushMetric(inRef, 'processing-time', 23.44)
+ *
+ * @param inRef a location in firebase
+ * @param {string} tag a tag for the data
+ * @param {number} value the data value
+ * @returns {Promise}
+ */
 declare function pushMetric(inRef: firebase.database.Reference, tag: string, value?: number): firebase.database.ThenableReference;
 /**
  * Start a process that looks at a metric inbox location in firebase and
