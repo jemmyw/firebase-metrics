@@ -118,6 +118,8 @@ So we can see what is happening. It puts the data into buckets in each resolutio
 You can also pass in values that will be averaged in each time bucket using the helper `pushMetric`. For example:
 
 ```js
+const {pushMetric} = require('firebase-metrics');
+
 pushMetric(inRef, 'tag1', 23.33);
 pushMetric(inRef, 'tag1', 10.78);
 ```
